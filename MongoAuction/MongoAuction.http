@@ -1,0 +1,6 @@
+@MongoAuction_HostAddress = http://localhost:5233
+
+GET {{MongoAuction_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
