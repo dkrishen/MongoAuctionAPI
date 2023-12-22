@@ -233,5 +233,63 @@ public class MongoDBService
     }
 
     #endregion
+    #region stats
 
+    public async Task<UserStatDto> GetBestSellerAsync()
+    {
+        var user = (await _userCollection.FindAsync(new BsonDocument())
+            .ConfigureAwait(false))
+            ?.ToList()
+            ?.OrderByDescending(u => u.Lots
+                .Where(l => !l.IsActive)
+                .Sum(l => l.CurrentCost))
+            ?.FirstOrDefault();
+
+        UserStatDto stats = new UserStatDto()
+        {
+            Username = user.Username,
+            LotsAmount = user.Lots.Where(l => !l.IsActive).Count(),
+            TotalCost = user.Lots.Where(l => !l.IsActive).Sum(l => l.CurrentCost),
+            LotTitles = user.Lots.Where(l => !l.IsActive).Select(l => l.Title).ToArray()
+        };
+
+        return stats;
+    }
+
+    public async Task<UserStatDto> GetBestCustomerAsync()
+    {
+        var lots = (await _userCollection.FindAsync(new BsonDocument())
+            .ConfigureAwait(false))
+            ?.ToList()
+            ?.SelectMany(u => u.Lots)
+            ?.Where(l => !l.IsActive);
+
+        var lotsByOwner = lots.GroupBy(l => l.LastBidderName);
+        var username = lotsByOwner.OrderByDescending(g 
+                => g.Sum(l => l.CurrentCost))
+            .FirstOrDefault().Key;
+
+        UserStatDto stats = new UserStatDto()
+        {
+            Username = username,
+            LotsAmount = lotsByOwner.Where(g => g.Key == username).FirstOrDefault().Count(),
+            TotalCost = lotsByOwner.Where(g => g.Key == username).FirstOrDefault().Sum(l => l.CurrentCost),
+            LotTitles = lotsByOwner.Where(g => g.Key == username).FirstOrDefault().Select(l => l.Title).ToArray()
+        };
+
+        return stats;
+    }
+
+    public async Task<Lot> GetMostExpensiveLotAsync()
+    {
+        return (await _userCollection.FindAsync(new BsonDocument())
+            .ConfigureAwait(false))
+            ?.ToList()
+            ?.SelectMany(u => u.Lots)
+            ?.Where(l => !l.IsActive)
+            ?.OrderBy(l => l.CurrentCost)
+            ?.FirstOrDefault();
+    }
+
+    #endregion
 }
